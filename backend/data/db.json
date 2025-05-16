@@ -11,15 +11,62 @@
   "nextId": 1,
   "adventures": [
     {
-      "id": "7b2bbdf9-75e2-478d-b583-28945b7bc289",
+      "id": "bfe528ac-72db-423d-803d-c297b02690dc",
       "userId": "d582e0bc-277b-47e4-ba05-d8b721fadc37",
       "name": "test",
       "description": "",
-      "createdAt": "2025-05-16T17:50:13.288Z",
-      "updatedAt": "2025-05-16T17:50:13.288Z",
+      "createdAt": "2025-05-16T18:51:51.373Z",
+      "updatedAt": "2025-05-16T18:52:01.112Z",
       "messages": [],
       "explicitMemories": [],
-      "characters": [],
+      "characters": [
+        {
+          "id": "616d69af-6403-4cde-9b08-066261535803",
+          "name": "Modao",
+          "race": "Human",
+          "class": "Warlock",
+          "level": 1,
+          "experiencePoints": 0,
+          "stats": {
+            "strength": 8,
+            "dexterity": 14,
+            "constitution": 12,
+            "intelligence": 10,
+            "wisdom": 13,
+            "charisma": 15
+          },
+          "skills": {},
+          "traits": [
+            {
+              "name": "Versatile",
+              "description": "+1 to all ability scores.",
+              "source": "race",
+              "id": "96257495-9e3a-4648-a6a9-b00e35258d9c"
+            },
+            {
+              "name": "Otherworldly Patron",
+              "description": "Choose a patron, such as the Archfey, the Fiend, or the Great Old One.",
+              "source": "class",
+              "id": "33a46a56-faaf-43e9-b7e9-1d50a7b6e3f1"
+            },
+            {
+              "name": "Pact Magic",
+              "description": "Cast spells using your Charisma as your spellcasting ability, regaining spell slots on a short rest.",
+              "source": "class",
+              "id": "36a0ccc6-e320-4c8c-8fe3-a51243e7e811"
+            }
+          ],
+          "inventory": [],
+          "hitPoints": {
+            "current": 11,
+            "maximum": 11
+          },
+          "armorClass": 12,
+          "proficiencyBonus": 2,
+          "createdAt": "2025-05-16T18:52:01.112Z",
+          "updatedAt": "2025-05-16T18:52:01.112Z"
+        }
+      ],
       "playerCount": 1
     }
   ]

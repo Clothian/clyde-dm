@@ -18,25 +18,60 @@ if not %errorlevel% == 0 (
     pause >nul
 )
 
-REM Kill any process already using port 5000
+REM Kill any process already using port 5000 (backend)
 echo Checking for processes using port 5000...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :5000') do (
     echo Terminating process with PID: %%a
     taskkill /PID %%a /F > nul 2>&1
 )
 echo Port 5000 is now free.
+
+REM Kill any process already using port 3000 (frontend)
+echo Checking for processes using port 3000...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000') do (
+    echo Terminating process with PID: %%a
+    taskkill /PID %%a /F > nul 2>&1
+)
+echo Port 3000 is now free.
+echo.
+
+REM Update DuckDNS with current public IP
+echo Updating DuckDNS record...
+for /f %%i in ('curl -s https://api.ipify.org') do set PUBLIC_IP=%%i
+echo Your public IP is: %PUBLIC_IP%
+
+set "DUCKDNS_TOKEN=b8920ae2-68fd-440d-8ae0-e33c79e43805"
+echo Attempting to update DuckDNS with token: %DUCKDNS_TOKEN%
+curl "https://www.duckdns.org/update?domains=sneakyjp&token=%DUCKDNS_TOKEN%&ip=%PUBLIC_IP%"
+echo.
+echo DuckDNS update command executed. Pausing for 2 seconds to see output.
+timeout /t 2
+echo.
+echo Waiting for DNS update to propagate (10 seconds)...
+timeout /t 10
 echo.
 
 REM Start Backend in a new window
-start cmd /k "cd backend && npm install && npm run dev"
+echo Starting backend server...
+start "ClydeDM Backend" cmd /k "cd backend && npm install && npm run dev"
 
 REM Give backend time to start
+echo Waiting for backend to initialize (5 seconds)...
 timeout /t 5
 
-REM Start Frontend in another window on port 3000
-start cmd /k "npm run dev -- --port 3000"
+REM Start Frontend in another window on port 3000 with host 0.0.0.0
+echo Starting frontend server...
+set HOST=0.0.0.0
+start "ClydeDM Frontend" cmd /k "npm run dev -- --port 3000"
 
 echo.
-echo Servers started! The application should open in your browser shortly.
-echo Frontend is running at http://localhost:3000
-echo Backend API is running at http://localhost:5000 
+echo Servers are being started in new windows.
+echo Frontend should be accessible at:
+echo - Local: http://localhost:3000
+echo - Network: http://sneakyjp.duckdns.org:3000 (if DuckDNS update was successful)
+echo   (Your public IP: %PUBLIC_IP%)
+echo Backend API should be running at http://localhost:5000
+echo.
+echo If the new windows close immediately, check them for error messages.
+echo Press any key to exit this script.
+pause >nul 

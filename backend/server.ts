@@ -24,8 +24,25 @@ console.log(`Attempting to start server on port: ${PORT}`); // Log the port
 
 const app = express();
 
+// CORS configuration
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://sneakyjp.duckdns.org:3000',
+    'http://85.237.194.73:3000',
+    'https://sneakyjp.duckdns.org:3000',
+    'https://85.237.194.73:3000',
+    // Add any other potential origins your client might connect from
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  optionsSuccessStatus: 200,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-auth-token']
+};
+
 // Init Middleware
-app.use(cors()); // Enable CORS for all routes
+app.use(cors(corsOptions)); // Enable CORS with configured options
 app.use(express.json()); // Parse JSON bodies
 
 // Define Routes
@@ -35,8 +52,9 @@ app.use('/api/adventures', adventureApiRoutes); // Use new adventure routes
 // app.use('/api/chat', chatApiRoutes); // Remove old chat routes
 
 // Start server with error handling
-const server = app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
+const server = app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`Server started on port ${PORT} and listening on all interfaces (0.0.0.0)`);
+  console.log(`CORS enabled for: ${corsOptions.origin.join(', ')}`);
 }).on('error', (err: any) => {
   if (err.code === 'EADDRINUSE') {
     console.error(`Port ${PORT} is already in use. Please close the other application or change the PORT in .env file.`);

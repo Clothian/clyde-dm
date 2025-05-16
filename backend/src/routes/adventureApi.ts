@@ -963,6 +963,71 @@ router.post('/:adventureId/memories', protect, async (req: AuthenticatedRequest,
   }
 });
 
+// @route   GET api/adventures/:adventureId/memories/extract-names
+// @desc    Extract character names from memories for filtering
+// @access  Private
+router.get('/:adventureId/memories/extract-names', protect, (req: AuthenticatedRequest, res: any) => {
+  const userId = req.user?.id;
+  const { adventureId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ msg: 'User ID not found in token' });
+  }
+
+  try {
+    const adventure = db.get('adventures')
+                        .find({ id: adventureId, userId })
+                        .value();
+
+    if (!adventure) {
+      return res.status(404).json({ msg: 'Adventure not found or access denied' });
+    }
+    
+    // Initialize a set to collect unique names
+    const nameSet = new Set<string>();
+    
+    // Extract names from adventure characters (real character records)
+    adventure.characters.forEach(character => {
+      nameSet.add(character.name);
+    });
+    
+    // Extract potential names from memories
+    adventure.explicitMemories.forEach(memory => {
+      // Look for capitalized words in memory text as potential names
+      const namePattern = /\b[A-Z][a-z]+\b/g;
+      const matches = memory.text.match(namePattern);
+      
+      if (matches) {
+        matches.forEach(name => {
+          // Avoid common words that might be capitalized
+          const commonWords = ['The', 'A', 'An', 'This', 'That', 'It', 'They', 'You', 'We', 'I'];
+          if (!commonWords.includes(name)) {
+            nameSet.add(name);
+          }
+        });
+      }
+      
+      // Also check for character names in tags
+      memory.tags.forEach(tag => {
+        if (tag.match(/^[A-Z][a-z]+$/)) {
+          nameSet.add(tag);
+        }
+      });
+    });
+    
+    // Convert set to sorted array
+    const characterNames = Array.from(nameSet).sort();
+    
+    res.json({
+      characterNames,
+      count: characterNames.length
+    });
+  } catch (err: any) {
+    console.error('Error extracting character names:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 /**
  * Format DM responses to improve readability
  */
