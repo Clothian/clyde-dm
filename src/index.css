@@ -107,6 +107,16 @@
     background-image: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='none' stroke='%239B87F5' stroke-width='1' stroke-dasharray='6, 14' stroke-dashoffset='0' stroke-linecap='square'/%3E%3C/svg%3E");
   }
 
+  .rune-border-light {
+    @apply relative rounded-md overflow-hidden;
+  }
+
+  .rune-border-light::after {
+    content: '';
+    @apply absolute inset-0 border border-arcane-purple/30 rounded-md pointer-events-none;
+    background-image: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='none' stroke='%239B87F5' stroke-width='1' stroke-dasharray='4, 10' stroke-dashoffset='0' stroke-linecap='square'/%3E%3C/svg%3E");
+  }
+
   .portal-circle {
     @apply absolute w-full h-full rounded-full border-4 border-arcane-purple/20 animate-portal-spin;
   }

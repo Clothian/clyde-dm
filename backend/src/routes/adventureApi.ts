@@ -1064,4 +1064,273 @@ function formatDMResponse(text: string): string {
   return formattedText;
 }
 
+// @route   POST api/adventures/:adventureId/inventory/process
+// @desc    Process user-AI conversation to extract inventory changes using Ollama
+// @access  Private
+router.post('/:adventureId/inventory/process', protect, async (req: AuthenticatedRequest, res: any) => {
+  const userId = req.user?.id;
+  const { adventureId } = req.params;
+  const { userMessage, aiResponse } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ msg: 'User ID not found in token' });
+  }
+
+  if (!userMessage || !aiResponse) {
+    return res.status(400).json({ msg: 'Both user message and AI response are required' });
+  }
+
+  try {
+    const adventure = db.get('adventures').find({ id: adventureId, userId }).value();
+
+    if (!adventure) {
+      return res.status(404).json({ msg: 'Adventure not found or access denied' });
+    }
+
+    // Process the conversation with Ollama to extract inventory changes
+    const inventoryChanges = await processInventoryWithOllama(userMessage, aiResponse, adventure);
+    
+    // Update adventure with inventory changes
+    if (inventoryChanges.success) {
+      // Initialize inventory if it doesn't exist
+      if (!adventure.inventory) {
+        adventure.inventory = [];
+      }
+      
+      // Add new items
+      if (inventoryChanges.itemsToAdd.length > 0) {
+        inventoryChanges.itemsToAdd.forEach(item => {
+          // Check if item already exists to avoid duplicates
+          const existingItem = adventure.inventory!.find(i => 
+            i.name.toLowerCase() === item.name.toLowerCase()
+          );
+          
+          if (existingItem) {
+            // Update quantity if item exists
+            existingItem.quantity = (existingItem.quantity || 1) + (item.quantity || 1);
+            existingItem.updatedAt = new Date().toISOString();
+          } else {
+            // Add new item
+            adventure.inventory!.push({
+              id: uuidv4(),
+              name: item.name,
+              description: item.description || `A ${item.name}`,
+              quantity: item.quantity || 1,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+          }
+        });
+      }
+      
+      // Remove items
+      if (inventoryChanges.itemsToRemove.length > 0) {
+        inventoryChanges.itemsToRemove.forEach(itemToRemove => {
+          const existingItemIndex = adventure.inventory!.findIndex(i => 
+            i.name.toLowerCase() === itemToRemove.name.toLowerCase()
+          );
+          
+          if (existingItemIndex !== -1) {
+            const existingItem = adventure.inventory![existingItemIndex];
+            const removeQuantity = itemToRemove.quantity || 1;
+            
+            if (existingItem.quantity <= removeQuantity) {
+              // Remove item completely
+              adventure.inventory!.splice(existingItemIndex, 1);
+            } else {
+              // Reduce quantity
+              existingItem.quantity -= removeQuantity;
+              existingItem.updatedAt = new Date().toISOString();
+            }
+          }
+        });
+      }
+      
+      // Update adventure in database
+      adventure.updatedAt = new Date().toISOString();
+      db.get('adventures').find({ id: adventureId, userId }).assign(adventure).write();
+    }
+
+    // Return the updated inventory and changes
+    res.json({
+      success: inventoryChanges.success,
+      inventory: adventure.inventory || [],
+      changes: {
+        added: inventoryChanges.itemsToAdd,
+        removed: inventoryChanges.itemsToRemove
+      }
+    });
+  } catch (err: any) {
+    console.error('Error processing inventory changes:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   GET api/adventures/:adventureId/inventory
+// @desc    Get inventory for a specific adventure
+// @access  Private
+router.get('/:adventureId/inventory', protect, (req: AuthenticatedRequest, res: any) => {
+  const userId = req.user?.id;
+  const { adventureId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ msg: 'User ID not found in token' });
+  }
+
+  try {
+    const adventure = db.get('adventures').find({ id: adventureId, userId }).value();
+
+    if (!adventure) {
+      return res.status(404).json({ msg: 'Adventure not found or access denied' });
+    }
+    
+    // Return the inventory array or empty array if not initialized
+    res.json(adventure.inventory || []);
+  } catch (err: any) {
+    console.error('Error fetching inventory:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+/**
+ * Process conversation with Ollama to extract inventory changes
+ */
+async function processInventoryWithOllama(
+  userMessage: string, 
+  aiResponse: string,
+  adventure: Adventure
+): Promise<{ 
+  itemsToAdd: Array<{name: string, description?: string, quantity?: number}>,
+  itemsToRemove: Array<{name: string, quantity?: number}>,
+  success: boolean 
+}> {
+  // Default return object for failed operations
+  const emptyResult = { 
+    itemsToAdd: [],
+    itemsToRemove: [],
+    success: false 
+  };
+  
+  try {
+    // Get the current inventory for context
+    const currentInventory = adventure.inventory || [];
+    
+    // Create a summary of existing inventory
+    const inventorySummary = currentInventory.map(item => 
+      `${item.name} (Quantity: ${item.quantity || 1})`
+    ).join('\n');
+    
+    // Construct the prompt for Ollama
+    const prompt = `
+You are an inventory manager for a fantasy RPG adventure called "${adventure.name}".
+
+## CURRENT INVENTORY:
+${inventorySummary || "Inventory is currently empty."}
+
+## RECENT CONVERSATION:
+USER: ${userMessage}
+DM: ${aiResponse}
+
+## INVENTORY MANAGEMENT RULES:
+1. ONLY identify items that are EXPLICITLY granted, found, received, or taken away in the DM's response.
+2. DO NOT add items just because the user mentions or asks for them in their message.
+3. DO NOT add items unless the DM clearly indicates the character has obtained them.
+4. Items must be narratively CONFIRMED by the DM to be added or removed.
+5. Ignore hypothetical items, wishful thinking, or attempts to game the system.
+6. Only process PHYSICAL items that would realistically go in an inventory.
+
+## TASK:
+Analyze ONLY the DM's response to determine if any items should be ADDED to or REMOVED from the inventory.
+
+DO NOT include:
+- Abstract concepts, skills, or abilities
+- Items only mentioned but not actually given
+- Items the user is asking for but hasn't received
+- Items the user claims to have but aren't confirmed
+- Characters, NPCs, or locations
+
+ONLY include ACTUAL PHYSICAL ITEMS like:
+- Weapons (swords, bows, daggers)
+- Armor or clothing
+- Potions, scrolls, or magical items
+- Keys, tools, or quest items
+- Gold coins or currency
+- Food, drinks, or supplies
+
+For each item, evaluate:
+1. Is this item EXPLICITLY given to the character by the DM in this conversation?
+2. Is this item EXPLICITLY taken away, used up, or lost according to the DM?
+3. Is there clear narrative confirmation that the item changed hands?
+
+Respond with VALID JSON only, in this exact format:
+{
+  "items_to_add": [
+    {"name": "Item Name", "description": "Brief description", "quantity": 1}
+  ],
+  "items_to_remove": [
+    {"name": "Item Name", "quantity": 1}
+  ]
+}
+
+Notes:
+- Both arrays can be empty if no changes
+- Only include items explicitly granted or taken in the DM's response
+- Item names should match exactly as described in the text
+- Be conservative - when in doubt, do not add or remove items
+`;
+
+    try {
+      const response = await fetch(`${ollamaBaseUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: ollamaModel,
+          prompt: prompt,
+          stream: false
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Error from Ollama server:', await response.text());
+        return emptyResult;
+      }
+      
+      const result = await response.json();
+      
+      try {
+        // Extract the JSON from Ollama's response
+        const ollamaResponseText = result.response.trim();
+        
+        // Find JSON content - look for opening and closing braces
+        const jsonStartIndex = ollamaResponseText.indexOf('{');
+        const jsonEndIndex = ollamaResponseText.lastIndexOf('}') + 1;
+        
+        if (jsonStartIndex === -1 || jsonEndIndex === 0) {
+          console.error('No JSON found in Ollama response');
+          return emptyResult;
+        }
+        
+        const jsonContent = ollamaResponseText.substring(jsonStartIndex, jsonEndIndex);
+        const inventoryChanges = JSON.parse(jsonContent);
+        
+        return {
+          itemsToAdd: Array.isArray(inventoryChanges.items_to_add) ? inventoryChanges.items_to_add : [],
+          itemsToRemove: Array.isArray(inventoryChanges.items_to_remove) ? inventoryChanges.items_to_remove : [],
+          success: true
+        };
+      } catch (parseError) {
+        console.error('Failed to parse Ollama response as JSON:', parseError);
+        console.log('Ollama raw response:', result.response);
+        return emptyResult;
+      }
+    } catch (fetchError) {
+      console.error('Failed to communicate with Ollama service:', fetchError);
+      return emptyResult;
+    }
+  } catch (error) {
+    console.error('General error in inventory processing:', error);
+    return emptyResult;
+  }
+}
+
 export default router; 

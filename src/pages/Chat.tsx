@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import CharacterSheet, { Character as CharacterType } from '@/components/CharacterSheet';
+import InventoryButton from '@/components/InventoryButton';
+import AdventureMemories from '@/components/AdventureMemories';
 
 const VITE_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const ADVENTURES_API_BASE_URL = `${VITE_API_URL}/api/adventures`;
@@ -25,6 +27,7 @@ export interface MemoryItem {
   id: string;
   text: string;
   createdAt: string;
+  tags: string[];
 }
 
 interface ExtendedAdventureType extends AdventureType {
@@ -51,6 +54,7 @@ const Chat = () => {
   const [showCharacterSheet, setShowCharacterSheet] = useState(false);
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterType | null>(null);
   const [showCharacterSelector, setShowCharacterSelector] = useState(false);
+  const [inventoryRefreshTrigger, setInventoryRefreshTrigger] = useState(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -206,6 +210,62 @@ const Chat = () => {
     setShowCharacterSelector(false);
   };
 
+  const processInventoryChanges = async (userMessage: string, aiMessage: ChatMessage) => {
+    if (!adventureId || !token) return;
+
+    try {
+      const response = await fetch(`${ADVENTURES_API_BASE_URL}/${adventureId}/inventory/process`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token,
+        },
+        body: JSON.stringify({
+          userMessage,
+          aiResponse: aiMessage.content
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process inventory changes');
+      }
+
+      const result = await response.json();
+      
+      // Show notifications if items were added or removed
+      const addedItems = result.changes.added;
+      const removedItems = result.changes.removed;
+      
+      if (addedItems && addedItems.length > 0) {
+        toast({
+          title: `Item${addedItems.length > 1 ? 's' : ''} Acquired`,
+          description: addedItems.map(item => `${item.name} (${item.quantity > 1 ? `x${item.quantity}` : ''})`)
+                         .join(', '),
+          className: "bg-green-900/30 border-green-800 text-white",
+        });
+        
+        // Trigger inventory refresh
+        setInventoryRefreshTrigger(prev => prev + 1);
+      }
+      
+      if (removedItems && removedItems.length > 0) {
+        toast({
+          title: `Item${removedItems.length > 1 ? 's' : ''} Removed`,
+          description: removedItems.map(item => `${item.name} (${item.quantity > 1 ? `x${item.quantity}` : ''})`)
+                         .join(', '),
+          className: "bg-red-900/30 border-red-800 text-white",
+        });
+        
+        // Trigger inventory refresh
+        setInventoryRefreshTrigger(prev => prev + 1);
+      }
+      
+    } catch (error) {
+      console.error('Error processing inventory changes:', error);
+      // Silently fail - not critical to user experience
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !token || !adventureId) return;
 
@@ -260,6 +320,9 @@ const Chat = () => {
           className: "bg-arcane-blue/30 border-arcane-blue text-white"
         });
       }
+
+      // Process inventory changes based on the conversation
+      processInventoryChanges(userMessageContent, aiMessage);
 
       // Refresh adventure data to get updated messages and memories
       fetchAdventureDetails();
@@ -325,6 +388,7 @@ const Chat = () => {
               {user.username}
             </div>
           )}
+          {adventureId && <InventoryButton adventureId={adventureId} refreshTrigger={inventoryRefreshTrigger} />}
           {characters.length > 0 && (
             <ArcaneButton
               variant="outline"

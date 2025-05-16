@@ -65,7 +65,15 @@ export type InventoryItem = {
   name: string;
   description: string;
   quantity: number;
-  equipped: boolean;
+  createdAt: string;
+  updatedAt: string;
+  // Optional properties for RPG items
+  type?: string; // weapon, armor, potion, etc.
+  rarity?: string; // common, uncommon, rare, etc.
+  value?: number; // monetary value
+  weight?: number; // weight in pounds/kg
+  effects?: string[]; // magical or special effects
+  isEquipped?: boolean; // if the item is currently equipped
 };
 
 // Define a Character in the adventure
@@ -91,18 +99,19 @@ export type Character = {
 };
 
 // Define a type for our Adventure
-export type Adventure = {
-  id: string; // Unique ID for the adventure
-  userId: string; // ID of the user who owns this adventure
+export interface Adventure {
+  id: string;
+  userId: string;
   name: string;
   description: string;
   createdAt: string;
   updatedAt: string;
-  messages: ChatMessage[]; // Array to store chat history for this adventure
-  explicitMemories: MemoryItem[]; // Array to store explicit, structured memories
-  characters: Character[]; // Array of characters in this adventure
-  playerCount: number; // Number of players in this adventure
-};
+  messages: ChatMessage[];
+  explicitMemories: MemoryItem[];
+  characters: Character[];
+  playerCount: number;
+  inventory?: InventoryItem[]; // Add inventory support
+}
 
 // Define a type for our database schema
 type Schema = {
