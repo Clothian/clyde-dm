@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type ArcaneButtonProps = React.ComponentPropsWithoutRef<typeof Button> & {
-  variant?: 'default' | 'outline' | 'rune';
+  variant?: 'default' | 'outline' | 'rune';  // Added 'rune' as a valid variant
   glowColor?: 'purple' | 'blue';
 };
 
