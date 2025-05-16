@@ -1,73 +1,82 @@
-# Welcome to your Lovable project
+# Clyde DM - Fantasy RPG Interface
 
-## Project info
+Clyde DM is an interactive fantasy RPG interface for dungeon masters and players, featuring a beautiful arcane UI and user authentication.
 
-**URL**: https://lovable.dev/projects/b7ad2b02-fd80-4f34-b477-5cf1cddf1aa7
+## Features
 
-## How can I edit this code?
+- **User authentication** with signup, login, and logout
+- **Session persistence** across browser sessions
+- **Protected routes** that require authentication
+- **Beautiful arcane-themed UI**
+- **Responsive chat interface**
+- **Simple file-based database** for user data
 
-There are several ways of editing your application.
+## Quick Start
 
-**Use Lovable**
+### One-Click Startup
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b7ad2b02-fd80-4f34-b477-5cf1cddf1aa7) and start prompting.
+Simply run the `start.bat` file in the root directory to start both the backend and frontend servers automatically.
 
-Changes made via Lovable will be committed automatically to this repo.
+The application will launch and open in your default browser:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000
 
-**Use your preferred IDE**
+### Manual Setup
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+If you prefer to start the servers separately:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. **Backend:**
+   ```
+   cd backend
+   npm install
+   npm run dev
+   ```
+   (The backend will run on port 5000 by default, or the port specified in `backend/.env`)
 
-Follow these steps:
+2. **Frontend:**
+   ```
+   npm run dev -- --port 3000
+   ```
+   (Or simply `npm run dev` and it will usually pick port 3000 if available, or another one if 3000 is busy. The `start.bat` specifically sets it to 3000.)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Project Structure
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- **Frontend:** React with TypeScript, using shadcn/ui components (runs on port 3000)
+- **Backend:** Express server with a simple file-based database using lowdb (runs on port 5000)
 
-# Step 3: Install the necessary dependencies.
-npm i
+## User Authentication
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+The application uses JWT (JSON Web Tokens) for authentication. When a user logs in or signs up:
 
-**Edit a file directly in GitHub**
+1. The server validates credentials and returns a JWT token
+2. This token is stored in the browser's localStorage
+3. The token is sent with subsequent requests to authenticate the user
+4. Protected routes check for a valid token before allowing access
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Development
 
-**Use GitHub Codespaces**
+### Backend API Endpoints
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+(Accessible at http://localhost:5000)
 
-## What technologies are used for this project?
+- `POST /api/auth/signup` - Register a new user
+- `POST /api/auth/login` - Authenticate a user
+- `GET /api/auth/me` - Get user information (protected route)
 
-This project is built with:
+### Database
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+User data is stored in a simple JSON file at `backend/data/db.json`. This file is automatically created on first run.
 
-## How can I deploy this project?
+## Built With
 
-Simply open [Lovable](https://lovable.dev/projects/b7ad2b02-fd80-4f34-b477-5cf1cddf1aa7) and click on Share -> Publish.
+- **React** - Frontend framework
+- **TypeScript** - Type safety
+- **Express** - Backend server
+- **lowdb** - Simple file-based JSON database
+- **JWT** - Authentication tokens
+- **shadcn/ui** - UI components
+- **Tailwind CSS** - Styling
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+This project is licensed under the MIT License - see the LICENSE file for details.

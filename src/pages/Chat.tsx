@@ -1,8 +1,9 @@
-
 import { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import { Send, LogOut } from 'lucide-react';
 import ArcaneButton from '@/components/ArcaneButton';
 import GlowingRune from '@/components/GlowingRune';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 type Message = {
   id: number;
@@ -37,6 +38,8 @@ const Chat = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [typing, setTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,6 +48,11 @@ const Chat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
   
   const handleSendMessage = () => {
     if (!inputMessage.trim()) return;
@@ -84,12 +92,25 @@ const Chat = () => {
       <header className="py-4 px-6 arcane-glass border-b border-arcane-purple/30 flex items-center justify-between">
         <div className="flex items-center">
           <GlowingRune symbol="⎈" size="sm" />
-          <h1 className="ml-3 text-xl font-arcane text-glow">DM Nexus</h1>
+          <h1 className="ml-3 text-xl font-arcane text-glow">Clyde DM</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
           <div className="text-sm px-3 py-1 rounded-full bg-arcane-purple/20 text-arcane-purple-light">
             Campaign: Eldoria
           </div>
+          {user && (
+            <div className="text-sm px-3 py-1 rounded-full bg-arcane-blue/20 text-arcane-blue-light">
+              {user.username}
+            </div>
+          )}
+          <ArcaneButton 
+            variant="outline" 
+            className="h-8 text-sm px-3 flex items-center gap-1"
+            onClick={handleLogout}
+          >
+            <LogOut size={14} />
+            <span>Exit</span>
+          </ArcaneButton>
         </div>
       </header>
       

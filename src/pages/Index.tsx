@@ -1,16 +1,63 @@
-
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
 import ArcaneInput from '@/components/ArcaneInput';
 import ArcaneButton from '@/components/ArcaneButton';
 import ParticleBackground from '@/components/ParticleBackground';
 import GlowingRune from '@/components/GlowingRune';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login, isAuthenticated, error } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    // If already authenticated, redirect to chat
+    if (isAuthenticated) {
+      navigate('/chat');
+    }
+  }, [isAuthenticated, navigate]);
+  
+  useEffect(() => {
+    // Show error toast if login fails
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Failed",
+        description: error,
+      });
+    }
+  }, [error, toast]);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please provide both email and password",
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      await login(email, password);
+      // Auth context will handle redirect if login is successful
+    } catch (err) {
+      // Error is handled by the auth context
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -35,17 +82,18 @@ const Index = () => {
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-arcane-purple/5 to-arcane-blue/5 rounded-lg"></div>
         
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-glow mb-2">DM Nexus</h1>
+          <h1 className="text-3xl font-bold text-glow mb-2">Clyde DM</h1>
           <p className="text-gray-400">Enter the realm of infinite adventures</p>
         </div>
         
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <ArcaneInput
-            label="Username"
+            label="Email"
             icon={<User size={18} />}
-            placeholder="Enter your username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
           />
           
           <ArcaneInput
@@ -66,8 +114,20 @@ const Index = () => {
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
           
-          <ArcaneButton className="w-full h-12 font-arcane text-lg">
-            Enter the Realm
+          <ArcaneButton 
+            type="submit" 
+            className="w-full h-12 font-arcane text-lg"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            ) : (
+              'Enter the Realm'
+            )}
           </ArcaneButton>
           
           <div className="text-center">

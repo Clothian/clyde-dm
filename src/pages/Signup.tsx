@@ -1,17 +1,74 @@
-
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Eye, EyeOff, User, Lock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, User, Lock, Mail } from 'lucide-react';
 import ArcaneInput from '@/components/ArcaneInput';
 import ArcaneButton from '@/components/ArcaneButton';
 import ParticleBackground from '@/components/ParticleBackground';
 import GlowingRune from '@/components/GlowingRune';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [formFocused, setFormFocused] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { signup, isAuthenticated, error } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    // If already authenticated, redirect to chat
+    if (isAuthenticated) {
+      navigate('/chat');
+    }
+  }, [isAuthenticated, navigate]);
+  
+  useEffect(() => {
+    // Show error toast if signup fails
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Registration Failed",
+        description: error,
+      });
+    }
+  }, [error, toast]);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!username || !email || !password) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please fill out all fields",
+      });
+      return;
+    }
+    
+    if (password.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "Weak Password",
+        description: "Password must be at least 6 characters long",
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      await signup(username, email, password);
+      // Auth context will handle redirect if signup is successful
+    } catch (err) {
+      // Error is handled by the auth context
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -50,6 +107,7 @@ const Signup = () => {
         
         <form 
           className="space-y-6"
+          onSubmit={handleSubmit}
           onFocus={() => setFormFocused(true)}
           onBlur={(e) => {
             // Only set formFocused to false if the related target is outside the form
@@ -67,6 +125,15 @@ const Signup = () => {
           />
           
           <ArcaneInput
+            label="Your Email"
+            icon={<Mail size={18} />}
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          
+          <ArcaneInput
             label="Create a Password"
             icon={<Lock size={18} />}
             type={showPassword ? "text" : "password"}
@@ -78,14 +145,27 @@ const Signup = () => {
           
           <button
             type="button"
-            className="absolute right-12 top-[231px] text-gray-400 hover:text-white transition-colors"
+            className="absolute right-12 top-[282px] text-gray-400 hover:text-white transition-colors"
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
           
-          <ArcaneButton className="w-full h-12 font-arcane text-lg" glowColor="blue">
-            Bind My Fate
+          <ArcaneButton 
+            type="submit"
+            className="w-full h-12 font-arcane text-lg" 
+            glowColor="blue"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            ) : (
+              'Bind My Fate'
+            )}
           </ArcaneButton>
           
           <div className="text-center">

@@ -1,0 +1,12 @@
+{
+  "users": [
+    {
+      "id": "d582e0bc-277b-47e4-ba05-d8b721fadc37",
+      "username": "sneakyjunkpunch",
+      "email": "firstech94@gmail.com",
+      "passwordHash": "$2a$10$FUWVjRSFyczomMcdRP3iWufh7YbQhw9fFYz0trAuhN1CoqnS6Fkyq",
+      "createdAt": "2025-05-16T14:21:07.921Z"
+    }
+  ],
+  "nextId": 1
+}

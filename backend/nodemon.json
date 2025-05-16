@@ -1,0 +1,9 @@
+{
+  "watch": ["src", "server.ts"],
+  "ext": "ts,json",
+  "ignore": ["src/**/*.spec.ts", "node_modules", "backend/data"],
+  "execMap": {
+    "ts": "ts-node"
+  },
+  "script": "server.ts"
+} 
