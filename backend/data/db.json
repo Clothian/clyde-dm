@@ -8,5 +8,66 @@
       "createdAt": "2025-05-16T14:21:07.921Z"
     }
   ],
-  "nextId": 1
+  "nextId": 1,
+  "adventures": [
+    {
+      "id": "7eeb6d98-5b4c-4e21-871c-8fc9d3478781",
+      "userId": "d582e0bc-277b-47e4-ba05-d8b721fadc37",
+      "name": "B",
+      "description": "MAyo",
+      "createdAt": "2025-05-16T16:19:27.476Z",
+      "updatedAt": "2025-05-16T16:19:46.743Z",
+      "messages": [],
+      "explicitMemories": [],
+      "characters": [
+        {
+          "id": "825c1ec1-1dda-46a5-8a21-7be2ed5a7d69",
+          "name": "Modao",
+          "race": "Human",
+          "class": "Warlock",
+          "level": 1,
+          "experiencePoints": 0,
+          "stats": {
+            "strength": 8,
+            "dexterity": 14,
+            "constitution": 12,
+            "intelligence": 10,
+            "wisdom": 13,
+            "charisma": 15
+          },
+          "skills": {},
+          "traits": [
+            {
+              "name": "Versatile",
+              "description": "+1 to all ability scores.",
+              "source": "race",
+              "id": "06b8d5a6-957d-43db-b769-cd6563b9ca01"
+            },
+            {
+              "name": "Otherworldly Patron",
+              "description": "Choose a patron, such as the Archfey, the Fiend, or the Great Old One.",
+              "source": "class",
+              "id": "606fabad-b78a-4ef4-a9b9-32af27d8cb17"
+            },
+            {
+              "name": "Pact Magic",
+              "description": "Cast spells using your Charisma as your spellcasting ability, regaining spell slots on a short rest.",
+              "source": "class",
+              "id": "70872cf6-abef-4e7d-9226-cfebb1addaf1"
+            }
+          ],
+          "inventory": [],
+          "hitPoints": {
+            "current": 11,
+            "maximum": 11
+          },
+          "armorClass": 12,
+          "proficiencyBonus": 2,
+          "createdAt": "2025-05-16T16:19:46.743Z",
+          "updatedAt": "2025-05-16T16:19:46.743Z"
+        }
+      ],
+      "playerCount": 1
+    }
+  ]
 }

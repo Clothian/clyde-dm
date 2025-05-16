@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface PrivateRouteProps {
@@ -7,6 +7,7 @@ interface PrivateRouteProps {
 
 const PrivateRoute = ({ children }: PrivateRouteProps) => {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   // Show loading spinner or skeleton while checking auth status
   if (loading) {
@@ -24,9 +25,9 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
     );
   }
 
-  // If not authenticated, redirect to login page
+  // If not authenticated, redirect to login page, saving the current location they were trying to go to
   if (!isAuthenticated) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" state={{ from: location }} replace />;
   }
 
   // If authenticated, render the protected component

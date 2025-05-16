@@ -15,16 +15,16 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formFocused, setFormFocused] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signup, isAuthenticated, error } = useAuth();
+  const { signup, isAuthenticated, error, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
   useEffect(() => {
-    // If already authenticated, redirect to chat
-    if (isAuthenticated) {
-      navigate('/chat');
+    // If already authenticated, redirect to dashboard
+    if (isAuthenticated && !loading) {
+      navigate('/dashboard');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, loading, navigate]);
   
   useEffect(() => {
     // Show error toast if signup fails

@@ -10,6 +10,7 @@ Clyde DM is an interactive fantasy RPG interface for dungeon masters and players
 - **Beautiful arcane-themed UI**
 - **Responsive chat interface**
 - **Simple file-based database** for user data
+- **Advanced memory system** powered by local Ollama inference
 
 ## Quick Start
 
@@ -34,9 +35,19 @@ If you prefer to start the servers separately:
    (The backend will run on port 5000 by default, or the port specified in `backend/.env`)
 
 2. **Frontend:**
-   ```
-   npm run dev -- --port 3000
-   ```
+   - Create a `.env` file in the project root by copying `.env.example`.
+     ```
+     # In the project root directory
+     cp .env.example .env
+     ```
+   - The `.env` file should contain:
+     ```
+     VITE_API_BASE_URL=http://localhost:5000
+     ```
+   - Then run:
+     ```
+     npm run dev -- --port 3000
+     ```
    (Or simply `npm run dev` and it will usually pick port 3000 if available, or another one if 3000 is busy. The `start.bat` specifically sets it to 3000.)
 
 ## Project Structure
@@ -80,3 +91,17 @@ User data is stored in a simple JSON file at `backend/data/db.json`. This file i
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Memory System (Optional)
+
+The application includes an advanced memory system that enhances the AI dungeon master by:
+- Automatically identifying and saving important moments and information during play
+- Recalling relevant memories when needed for context
+
+To use this feature:
+
+1. Install Ollama from [ollama.com/download](https://ollama.com/download)
+2. Start the Ollama service
+3. Pull the required model: `ollama pull qwen3:8b-q4_K_M`
+
+If Ollama is not available, the application will continue to function without the memory features.

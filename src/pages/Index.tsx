@@ -13,16 +13,16 @@ const Index = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, isAuthenticated, error } = useAuth();
+  const { login, isAuthenticated, error, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
   useEffect(() => {
-    // If already authenticated, redirect to chat
-    if (isAuthenticated) {
-      navigate('/chat');
+    // If already authenticated, redirect to dashboard
+    if (isAuthenticated && !loading) {
+      navigate('/dashboard');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, loading, navigate]);
   
   useEffect(() => {
     // Show error toast if login fails

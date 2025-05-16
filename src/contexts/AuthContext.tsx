@@ -19,7 +19,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE_URL = 'http://localhost:5000/api/auth';
+const VITE_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const AUTH_API_URL = `${VITE_API_URL}/api/auth`;
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -49,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserData = async (authToken: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/me`, {
+      const response = await fetch(`${AUTH_API_URL}/me`, {
         headers: {
           'x-auth-token': authToken
         }
@@ -76,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const response = await fetch(`${AUTH_API_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/signup`, {
+      const response = await fetch(`${AUTH_API_URL}/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

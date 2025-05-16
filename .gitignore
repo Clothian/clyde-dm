@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.production
+
+# Clyde DM specific
+# Mac files
+.DS_Store
+# Windows thumbnail cache
+Thumbs.db
