@@ -11,12 +11,12 @@
   "nextId": 1,
   "adventures": [
     {
-      "id": "429d78b3-d93d-47ce-b468-b67c93eb4286",
+      "id": "7b2bbdf9-75e2-478d-b583-28945b7bc289",
       "userId": "d582e0bc-277b-47e4-ba05-d8b721fadc37",
-      "name": "Test",
-      "description": "test",
-      "createdAt": "2025-05-16T16:31:26.071Z",
-      "updatedAt": "2025-05-16T16:31:26.071Z",
+      "name": "test",
+      "description": "",
+      "createdAt": "2025-05-16T17:50:13.288Z",
+      "updatedAt": "2025-05-16T17:50:13.288Z",
       "messages": [],
       "explicitMemories": [],
       "characters": [],
