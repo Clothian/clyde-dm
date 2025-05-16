@@ -32,7 +32,8 @@ export type MemoryItem = {
   id: string; // Unique ID for the memory item
   text: string; // The content of the memory
   createdAt: string; // Timestamp of when the memory was created
-  // Potentially: lastRecalledAt, relevanceScore, keywords for future enhancements
+  tags: string[]; // Keywords or tags associated with the memory content
+  // Potentially: lastRecalledAt, relevanceScore for future enhancements
 };
 
 // Define D&D Character Stats
@@ -117,12 +118,21 @@ const db = low(adapter);
 // Set default data: Initialize with empty users and adventures arrays if they don't exist.
 db.defaults({ users: [], adventures: [] }).write();
 
-// Ensure all adventures have the explicitMemories field
+// Ensure all adventures have the explicitMemories field with tags
 db.get('adventures').value().forEach(adventure => {
   if (adventure.explicitMemories === undefined) {
     // @ts-ignore // Temporary ignore for type mismatch during migration
     adventure.explicitMemories = [];
   }
+  // Ensure each memory within explicitMemories has a tags array
+  // @ts-ignore
+  adventure.explicitMemories.forEach(memory => {
+    // @ts-ignore
+    if (memory.tags === undefined) {
+      // @ts-ignore // Temporary ignore for type mismatch during migration
+      memory.tags = []; // Add empty tags array if missing
+    }
+  });
   
   // Add characters array if it doesn't exist
   if (adventure.characters === undefined) {

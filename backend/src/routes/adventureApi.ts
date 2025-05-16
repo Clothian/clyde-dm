@@ -20,11 +20,13 @@ async function processMemoriesWithOllama(
   userMessage: string, 
   adventure: Adventure,
   maxMessagesToConsider: number = 10
-): Promise<{ memoriesToAdd: string[], memoryIdsToRecall: string[], success: boolean }> {
+): Promise<{ memoriesToAdd: string[], memoryIdsToRecall: string[], tagsForNewMemories: string[][], searchKeywords: string[], success: boolean }> {
   // Default return object for failed operations
   const emptyResult = { 
     memoriesToAdd: [] as string[], 
     memoryIdsToRecall: [] as string[],
+    tagsForNewMemories: [] as string[][],
+    searchKeywords: [] as string[],
     success: false 
   };
   
@@ -37,9 +39,9 @@ async function processMemoriesWithOllama(
       `${msg.role.toUpperCase()}: ${msg.content}`
     ).join('\n\n');
     
-    // Create a summary of existing memories
+    // Create a summary of existing memories with tags
     const existingMemories = adventure.explicitMemories.map(mem => 
-      `ID: ${mem.id}\nContent: ${mem.text}\nCreated: ${mem.createdAt}`
+      `ID: ${mem.id}\nContent: ${mem.text}\nCreated: ${mem.createdAt}\nTags: ${mem.tags.join(', ')}`
     ).join('\n\n');
     
     // Construct the prompt for Ollama
@@ -59,26 +61,40 @@ ${userMessage}
 ${existingMemories || "No memories stored yet."}
 
 ## TASK:
-Analyze the conversation and answer TWO questions:
+Analyze the conversation and answer FOUR questions:
 
 1. Based on the user's latest message and conversation context, what important information (if any) should be saved as a new memory?
    - Focus on key plot points, character details, important decisions, quest objectives
    - Do NOT save trivial information or basic greetings
    - ONLY create memories for TRULY significant story information
 
-2. Which existing memories (if any) are relevant to the current conversation and should be recalled?
+2. For each new memory, what tags or keywords would best categorize this memory?
+   - Generate 3-5 tags per memory that represent key entities, concepts, or themes
+   - Tags should be single words or short phrases (1-3 words max)
+   - Include character names, locations, items, events as appropriate
+
+3. Which existing memories (if any) are relevant to the current conversation and should be recalled?
    - Only select memories that provide crucial context for responding to the user's latest message
    - Reference memories by their exact ID
+
+4. What search keywords would best help find relevant existing memories for this conversation?
+   - Generate 3-7 keywords based on the current context and user's message
+   - Keywords should be specific nouns, names, or concepts mentioned in the current conversation
+   - These keywords will be used to search memory tags to find relevant memories
 
 Respond with VALID JSON only, in this exact format:
 {
   "new_memories": ["memory text 1", "memory text 2"],
-  "recall_memory_ids": ["memory-id-1", "memory-id-2"]
+  "memory_tags": [["tag1", "tag2", "tag3"], ["tag4", "tag5", "tag6"]],
+  "recall_memory_ids": ["memory-id-1", "memory-id-2"],
+  "search_keywords": ["keyword1", "keyword2", "keyword3"]
 }
 
 Notes:
 - "new_memories" can be an empty array if nothing important to remember
+- "memory_tags" should contain one array of tags for each new memory (in the same order)
 - "recall_memory_ids" can be an empty array if no existing memories are relevant
+- "search_keywords" should contain terms to help find relevant memories
 - Limit to 1-2 new memories maximum
 - Be selective! Only truly important information should be memorized
 `;
@@ -120,6 +136,8 @@ Notes:
         return {
           memoriesToAdd: Array.isArray(memoryDecision.new_memories) ? memoryDecision.new_memories : [],
           memoryIdsToRecall: Array.isArray(memoryDecision.recall_memory_ids) ? memoryDecision.recall_memory_ids : [],
+          tagsForNewMemories: Array.isArray(memoryDecision.memory_tags) ? memoryDecision.memory_tags : [],
+          searchKeywords: Array.isArray(memoryDecision.search_keywords) ? memoryDecision.search_keywords : [],
           success: true
         };
       } catch (parseError) {
@@ -242,6 +260,60 @@ router.get('/:adventureId/memories', protect, (req: AuthenticatedRequest, res: a
     res.json(adventure.explicitMemories || []);
   } catch (err: any) {
     console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   GET api/adventures/:adventureId/memories/search
+// @desc    Search for memories by tags or keywords
+// @access  Private
+router.get('/:adventureId/memories/search', protect, (req: AuthenticatedRequest, res: any) => {
+  const userId = req.user?.id;
+  const { adventureId } = req.params;
+  const { query } = req.query;
+
+  if (!userId) {
+    return res.status(400).json({ msg: 'User ID not found in token' });
+  }
+
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ msg: 'Search query is required' });
+  }
+
+  try {
+    const adventure = db.get('adventures')
+                        .find({ id: adventureId, userId })
+                        .value();
+
+    if (!adventure) {
+      return res.status(404).json({ msg: 'Adventure not found or access denied' });
+    }
+    
+    // Convert query to lowercase for case-insensitive search
+    const searchTerms = query.toLowerCase().split(',').map(term => term.trim());
+    
+    // Search memories by tags
+    const matchedMemories = adventure.explicitMemories.filter(memory => {
+      // Check if any tag matches any search term
+      const tagMatches = memory.tags.some(tag => 
+        searchTerms.some(term => tag.toLowerCase().includes(term))
+      );
+      
+      // Check if memory text contains any search term
+      const textMatches = searchTerms.some(term => 
+        memory.text.toLowerCase().includes(term)
+      );
+      
+      return tagMatches || textMatches;
+    });
+    
+    res.json({
+      query,
+      matches: matchedMemories,
+      count: matchedMemories.length
+    });
+  } catch (err: any) {
+    console.error('Error searching memories:', err.message);
     res.status(500).send('Server Error');
   }
 });
@@ -513,30 +585,83 @@ router.post('/:adventureId/messages', protect, async (req: AuthenticatedRequest,
       
       // 2a. Save new memories if any
       if (memoryProcessingResult.success && memoryProcessingResult.memoriesToAdd.length > 0) {
-        for (const memoryText of memoryProcessingResult.memoriesToAdd) {
+        for (let i = 0; i < memoryProcessingResult.memoriesToAdd.length; i++) {
+          const memoryText = memoryProcessingResult.memoriesToAdd[i];
+          // Get the tags for this memory (or empty array if not available)
+          const memoryTags = memoryProcessingResult.tagsForNewMemories[i] || [];
+          
           const newMemory: MemoryItem = {
             id: uuidv4(),
             text: memoryText,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            tags: memoryTags
           };
           adventure.explicitMemories.push(newMemory);
           memoryOperations.saved.push(newMemory);
-          console.log(`Added new memory: ${newMemory.id} - ${memoryText.substring(0, 50)}...`);
+          console.log(`Added new memory: ${newMemory.id} - ${memoryText.substring(0, 50)}... with tags: ${memoryTags.join(', ')}`);
         }
       }
       
-      // 2b. Recall relevant memories if any
+      // 2b. Find memories by keywords before using explicit recall IDs
+      let relevantMemories: MemoryItem[] = [];
+      
+      // First try to find memories using search keywords
+      if (memoryProcessingResult.success && memoryProcessingResult.searchKeywords.length > 0) {
+        console.log(`Searching for memories with keywords: ${memoryProcessingResult.searchKeywords.join(', ')}`);
+        
+        // Find memories that have tags matching any of the search keywords
+        const keywordMatchedMemories = adventure.explicitMemories.filter(memory => 
+          memory.tags.some(tag => 
+            memoryProcessingResult.searchKeywords.some(keyword => 
+              tag.toLowerCase().includes(keyword.toLowerCase())
+            )
+          )
+        );
+        
+        // Add keyword-matched memories to relevant memories list
+        if (keywordMatchedMemories.length > 0) {
+          console.log(`Found ${keywordMatchedMemories.length} memories by keyword search`);
+          relevantMemories = relevantMemories.concat(keywordMatchedMemories);
+        }
+      }
+      
+      // Then add any explicitly recalled memories (if not already included)
       if (memoryProcessingResult.success && memoryProcessingResult.memoryIdsToRecall.length > 0) {
         const recalledMemories = adventure.explicitMemories.filter(
           memory => memoryProcessingResult.memoryIdsToRecall.includes(memory.id)
         );
         
-        if (recalledMemories.length > 0) {
-          memoryContextAddition = "\n\n## IMPORTANT MEMORIES:\n" + 
-            recalledMemories.map(memory => memory.text).join("\n\n");
-          memoryOperations.recalled = recalledMemories;
-          console.log(`Recalled ${recalledMemories.length} memories for context`);
-        }
+        // Only add recalled memories that aren't already in the relevantMemories list
+        recalledMemories.forEach(memory => {
+          if (!relevantMemories.some(m => m.id === memory.id)) {
+            relevantMemories.push(memory);
+          }
+        });
+        
+        console.log(`Added ${recalledMemories.length} explicitly recalled memories`);
+      }
+      
+      // De-duplicate and limit the number of memories to avoid context overload
+      // Using a Set-like approach with an object to deduplicate by ID
+      const uniqueMemoriesMap: { [key: string]: MemoryItem } = {};
+      relevantMemories.forEach(memory => {
+        uniqueMemoriesMap[memory.id] = memory;
+      });
+      relevantMemories = Object.values(uniqueMemoriesMap);
+      
+      // Limit to a reasonable number of memories to avoid context overflow
+      const MAX_MEMORIES_TO_INCLUDE = 5;
+      if (relevantMemories.length > MAX_MEMORIES_TO_INCLUDE) {
+        console.log(`Limiting memories from ${relevantMemories.length} to ${MAX_MEMORIES_TO_INCLUDE}`);
+        relevantMemories = relevantMemories.slice(0, MAX_MEMORIES_TO_INCLUDE);
+      }
+      
+      // Add the relevant memories to context if any were found
+      if (relevantMemories.length > 0) {
+        memoryContextAddition = "\n\n## IMPORTANT MEMORIES:\n" + 
+          relevantMemories.map(memory => memory.text).join("\n\n");
+        memoryOperations.recalled = relevantMemories;
+        console.log(`Including ${relevantMemories.length} memories for context`);
       }
     } catch (memoryError) {
       console.error('Error during memory processing:', memoryError);
@@ -739,7 +864,7 @@ router.delete('/:adventureId/memories/:memoryId', protect, async (req: Authentic
 router.put('/:adventureId/memories/:memoryId', protect, async (req: AuthenticatedRequest, res: any) => {
   const userId = req.user?.id;
   const { adventureId, memoryId } = req.params;
-  const { text } = req.body;
+  const { text, tags } = req.body;
 
   if (!userId) {
     return res.status(400).json({ msg: 'User ID not found in token' });
@@ -768,6 +893,11 @@ router.put('/:adventureId/memories/:memoryId', protect, async (req: Authenticate
     // Update the memory text
     adventure.explicitMemories[memoryIndex].text = text;
     
+    // Update tags if provided
+    if (tags && Array.isArray(tags)) {
+      adventure.explicitMemories[memoryIndex].tags = tags;
+    }
+    
     // Update the adventure in the DB
     db.get('adventures').find({ id: adventureId, userId }).assign(adventure).write();
 
@@ -778,6 +908,57 @@ router.put('/:adventureId/memories/:memoryId', protect, async (req: Authenticate
     });
   } catch (err: any) {
     console.error('Error updating memory:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   POST api/adventures/:adventureId/memories
+// @desc    Create a new memory manually
+// @access  Private
+router.post('/:adventureId/memories', protect, async (req: AuthenticatedRequest, res: any) => {
+  const userId = req.user?.id;
+  const { adventureId } = req.params;
+  const { text, tags } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ msg: 'User ID not found in token' });
+  }
+
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ msg: 'Memory text is required' });
+  }
+
+  try {
+    const adventure = db.get('adventures')
+                        .find({ id: adventureId, userId })
+                        .value();
+
+    if (!adventure) {
+      return res.status(404).json({ msg: 'Adventure not found or access denied' });
+    }
+
+    // Create a new memory
+    const newMemory: MemoryItem = {
+      id: uuidv4(),
+      text,
+      createdAt: new Date().toISOString(),
+      tags: Array.isArray(tags) ? tags : []
+    };
+    
+    // Add the memory to the adventure
+    adventure.explicitMemories.push(newMemory);
+    adventure.updatedAt = new Date().toISOString();
+    
+    // Update the adventure in the DB
+    db.get('adventures').find({ id: adventureId, userId }).assign(adventure).write();
+
+    res.status(201).json({ 
+      msg: 'Memory created successfully', 
+      memory: newMemory,
+      allMemories: adventure.explicitMemories
+    });
+  } catch (err: any) {
+    console.error('Error creating memory:', err.message);
     res.status(500).send('Server Error');
   }
 });
